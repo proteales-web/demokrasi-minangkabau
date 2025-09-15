@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>Kurisi Salapan</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&family=Yeseva+One&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --olive:#5e5d2d;
+      --gold:#f2be00;
+      --maroon:#982727;
+      --white:#ffffff;
+      --brown:#744d26;
+      --card-w:900px;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:'Josefin Sans',system-ui,Arial;
+      background:linear-gradient(180deg,var(--white),#fcfbf4);
+      margin:0;
+      padding:0;
+      color:var(--olive);
+      min-height:100vh;
+      overflow:hidden; /* pages control scrolling */
+    }
+ model-viewer { width: 60vw; max-width:900px; height: 60vh; background: transparent; }
+
+    /* PAGES container: each .page fills viewport */
+    .pages{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;position:relative;}
+    .page{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      overflow:auto; /* allow inner scroll if content taller than viewport */
+      background:transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    .page.hidden{ display:none; }
+
+    /* pager controls (fixed) */
+    .pager{
+      position:fixed;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:18px;
+      z-index:200;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      background:rgba(255,255,255,0.92);
+      border-radius:999px;
+      padding:6px;
+      border:1px solid rgba(116,77,38,0.06);
+      box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    }
+    .pager button{
+      background:var(--maroon);
+      color:var(--white);
+      border:0;
+      padding:8px 12px;
+      border-radius:8px;
+      font-weight:700;
+      cursor:pointer;
+      font-family:'Josefin Sans',sans-serif;
+    }
+    .pager .ghost{
+      background:transparent;color:var(--maroon);border:2px solid rgba(116,77,38,0.08);
+    }
+    .page-indicator{font-size:13px;color:#4b4b3b;padding:0 8px}
+
+    /* keep original CSS for cards and app (unchanged, copied and slightly adjusted) */
+    /* CARD */
+    .card{
+      width:var(--card-w);
+      max-width:95vw;
+      background:linear-gradient(180deg,rgba(255,255,255,0.96),#fff);
+      border-radius:14px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.12);
+      padding:22px;
+      display:flex;
+      gap:18px;
+      color:var(--olive);
+      border:4px solid rgba(116,77,38,0.08);
+      max-height: calc(100vh - 72px);
+      overflow: auto;
+    }
+
+    /* LEFT: MAP */
+    .map-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .map{
+      width:540px; /* 18m * 30px */
+      height:270px; /* 9m * 30px */
+      background: repeating-linear-gradient(0deg, transparent 0 29px, rgba(0,0,0,0.03) 29px 30px), repeating-linear-gradient(90deg, transparent 0 29px, rgba(0,0,0,0.03) 29px 30px), linear-gradient(180deg,#fbf8ed,#f6f4e6);
+      border-radius:10px;
+      border:6px solid var(--brown);
+      position:relative;
+      overflow:visible;
+      box-shadow:inset 0 0 0 2px rgba(94,93,45,0.02);
+    }
+    /* talud / batas area (visual) */
+    .map::before{
+      content:'';
+      position:absolute;
+      inset:8px;
+      border-radius:8px;
+      pointer-events:none;
+      box-shadow:0 0 0 6px rgba(116,77,38,0.06) inset;
+    }
+    .scale-label{font-size:12px;margin-top:8px;color:#6b6b4a}
+
+    /* COMPASS */
+  /* ---------- 1) Geser kompas ke sudut kiri (ganti / tambahkan) ---------- */
+.compass{
+  position:absolute;
+  left:10px;      /* pindah ke kiri */
+  right:auto;     /* pastikan tidak memaksa ke kanan */
+  top:10px;
+  width:68px;
+  height:68px;
+  border-radius:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.9),#fff);
+  border:2px solid rgba(116,77,38,0.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  color:var(--maroon);
+  box-shadow:0 6px 14px rgba(0,0,0,0.12);
+  z-index:30;
+  font-weight:700;
+  font-family:'Yeseva One',serif;
+}
+
+/* jika ingin sedikit merapat ke pojok pada layar kecil */
+@media (max-width:480px){
+  .compass{ left:8px; top:8px; width:60px; height:60px; font-size:10px; }
+}
+
+/* ---------- 2) CSS tambahan: card presentasi siap pakai ---------- */
+/* Gunakan struktur HTML sederhana:
+<div class="pres-card">
+  <h2 class="pres-title">Judul</h2>
+  <div class="pres-body">Paragraf ...</div>
+  <div class="pres-media">
+    <img class="pres-image" src="..." alt="">
+    <!-- atau embed -->
+    <div class="pres-embed"><iframe src="..."></iframe></div>
+  </div>
+  <div class="pres-actions">
+    <button class="pres-btn primary">Primary</button>
+    <button class="pres-btn ghost">Kedua</button>
+  </div>
+</div>
+*/
+
+.pres-card{
+  background: linear-gradient(180deg, #fffdf7, #fffaf0);
+  border: 1px solid rgba(116,77,38,0.08);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+  max-width: 820px;
+  margin: 12px auto;
+  color: #333228;
+  font-family: 'Josefin Sans', system-ui, Arial;
+}
+
+/* Title — gunakan Yeseva One untuk gaya tajam */
+.pres-title{
+  font-family: 'Yeseva One', serif;
+  font-size: 22px;
+  margin: 0 0 8px 0;
+  color: var(--maroon);
+  letter-spacing: 0.4px;
+}
+
+/* Body text (justify seperti diminta) */
+.pres-body{
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: justify;        /* penting: justify paragraf */
+  margin-bottom: 12px;
+  color: #444235;
+}
+
+/* Media area: gambar & embed */
+.pres-media{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.pres-image{ width:100%; height:auto; border-radius:10px; object-fit:cover; border:1px solid rgba(116,77,38,0.04); }
+.pres-embed iframe{ width:100%; height:320px; border:0; border-radius:10px; }
+
+/* Actions / tombol */
+.pres-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.pres-btn{
+  padding:8px 14px;
+  border-radius:10px;
+  font-weight:700;
+  font-family: 'Josefin Sans', sans-serif;
+  cursor:pointer;
+  border:2px solid transparent;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+}
+.pres-btn.primary{
+  background: var(--maroon);
+  color: var(--white);
+  border-color: rgba(152,39,39,0.12);
+}
+.pres-btn.ghost{
+  background: transparent;
+  color: var(--maroon);
+  border-color: rgba(116,77,38,0.10);
+}
+
+/* small responsive tweaks */
+@media (max-width:700px){
+  .pres-card{ padding:12px; border-radius:12px; }
+  .pres-title{ font-size:18px; }
+  .pres-embed iframe{ height:220px; }
+}
+
+    .compass .cardinal{position:absolute;font-size:10px;color:var(--olive);font-weight:700}
+    .compass .N{top:6px}
+    .compass .S{bottom:6px}
+    .compass .E{right:6px}
+    .compass .W{left:6px}
+    .compass .NE{right:6px;top:8px;font-size:9px}
+    .compass .NW{left:6px;top:8px;font-size:9px}
+    .compass .SE{right:6px;bottom:8px;font-size:9px}
+    .compass .SW{left:6px;bottom:8px;font-size:9px}
+
+    /* PALETTE */
+    .tools{width:220px;display:flex;flex-direction:column;gap:12px}
+    .palette{background:linear-gradient(180deg,#fff8e8,#fffef6);border-radius:10px;padding:12px;border:3px solid rgba(116,77,38,0.06)}
+    .palette h3{font-family:'Yeseva One',serif;margin:0 0 8px 0;color:var(--maroon);font-size:16px}
+    .stone-item{display:flex;gap:8px;align-items:center;margin:6px 0;padding:6px;border-radius:8px;background:rgba(242,190,0,0.06);cursor:grab}
+    .stone-drag{width:48px;height:28px;border-radius:6px;background:var(--olive);display:flex;align-items:center;justify-content:center;color:var(--white);font-size:12px;font-weight:700}
+    .stone-label{font-size:13px;color:#3d3d2b}
+
+    /* stones on map */
+    .stone{
+      position:absolute;transform:translate(-50%,-50%);cursor:grab;border-radius:8px;padding:4px 6px;font-weight:700;color:var(--white);font-size:12px;box-shadow:0 6px 14px rgba(0,0,0,0.18); touch-action:none;
+    }
+    .stone.row1{background:var(--maroon)}
+    .stone.row2{background:var(--olive)}
+    .stone.chair{background:linear-gradient(180deg,var(--gold),#e0a800);color:var(--maroon);border-radius:6px}
+
+    /* controls */
+    .controls{display:flex;gap:10px;align-items:center;margin-top:12px}
+    .btn{background:var(--maroon);color:var(--white);border:none;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;box-shadow:0 6px 12px rgba(152,39,39,0.12)}
+    .btn.alt{background:var(--olive);color:var(--white)}
+
+    /* clue box (singkat) */
+    .clues{flex:0.9;background:linear-gradient(180deg,#fff9ee,#fffefb);border-radius:10px;padding:12px;border:3px solid rgba(116,77,38,0.06);font-size:14px}
+    .clues h3{margin:0;font-family:'Yeseva One',serif;color:var(--maroon);font-size:16px}
+    .clue{margin:8px 0;padding:8px;border-radius:8px;background:linear-gradient(90deg,rgba(94,93,45,0.03),rgba(152,39,39,0.02));font-size:13px}
+
+    /* answer overlay */
+    .answer-overlay{position:absolute;inset:0;pointer-events:none;z-index:20}
+    .hint-pin{width:18px;height:18px;border-radius:50%;background:rgba(242,190,0,0.95);color:var(--maroon);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;box-shadow:0 6px 14px rgba(0,0,0,0.25)}
+    .answer-note{position:absolute;bottom:6px;left:6px;background:rgba(255,255,255,0.92);padding:8px;border-radius:8px;border:1px solid rgba(116,77,38,0.06);font-size:13px;color:#3a3a33}
+
+    /* small */
+    .meta{font-size:12px;color:#4b4b3b}
+
+    @media (max-width:930px){
+      .card{flex-direction:column;align-items:center}
+      .tools{width:100%}
+      .map{width:95vw;height:calc(95vw * 0.5)}
+    }
+
+/* GRID & LAYOUT */
+.match-card{ max-width:920px; width:95%; margin:16px auto; padding:18px; border-radius:12px; background:linear-gradient(180deg,#fffdf8,#fffaf2); border:1px solid rgba(116,77,38,0.06); }
+.match-grid{ display:grid; grid-template-columns: 1fr 80px 1fr; gap:12px; align-items:start; }
+
+/* TERMS / DEFS */
+.terms, .defs{ display:flex; flex-direction:column; gap:10px; padding:8px; }
+.term, .def{ padding:12px; border-radius:10px; background:#fff; border:1px solid rgba(116,77,38,0.06); font-weight:700; cursor:pointer; box-shadow:0 6px 14px rgba(0,0,0,0.04); }
+.term:focus, .def:focus{ outline:3px solid rgba(152,39,39,0.12); outline-offset:2px; }
+.term.selected{ box-shadow:0 10px 30px rgba(192,75,58,0.12); transform:translateY(-2px); }
+.def.connected{ box-shadow:0 10px 30px rgba(94,93,45,0.08); }
+
+/* SVG LAYER (overlay untuk garis) */
+.svg-layer{ position:relative; height:320px; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+/* svg menempati 100% area layer; pointer-events none supaya klik tetap jatuh ke term/def */
+svg.match-lines{ position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
+
+/* Path styling (fallback CSS — script juga mengatur stroke) */
+svg.match-lines path{ stroke-linecap:round; stroke-linejoin:round; opacity:0.98; }
+
+:root { --footer-h:48px; }
+
+.site-footer{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:var(--footer-h);
+  display:flex;
+  align-items:center;
+  justify-content:left;
+  background:linear-gradient(180deg, #fffefb, #fbf8ef);
+  border-top:1px solid rgba(116,77,38,0.06);
+  color:var(--olive);
+  font-size:13px;
+  z-index:100; /* pastikan lebih kecil dari .pager (pager z-index:200) supaya pager tetap di atas */
+  box-shadow:0 -6px 18px rgba(0,0,0,0.04);
+  pointer-events:auto;
+}
+
+/* jangan biarkan footer menutup konten penting saat halaman penuh */
+.pages { padding-bottom: calc(var(--footer-h) + 18px); }
+
+
+  </style>
+</head>
+<body>
+  <div class="pages" id="pagesRoot">
+
+    <!-- PAGE 1: Presentation card -->
+    <div class="page" data-page="0" id="page-0">
+      <!-- Contoh elemen presentasi (tempelkan di <body>) -->
+      <div class="pres-card" role="article" aria-label="kartu presentasi contoh">
+        <h2 class="pres-title">Cek Ombak</h2>
+
+        <div class="pres-body">
+         Provinsi apa yang ditunjukkan pada peta?
+        </div>
+
+        <div class="pres-media">
+          <!-- Gambar ilustrasi (ganti src sesuai file/gambar Anda) -->
+          <img class="pres-image" style="width:60%" src="peta1.png" alt="Ilustrasi denah Kurisi Salapan">
+      </div>
+
+<div class="pres-actions">
+    <button class="pres-btn primary" onclick="Swal.fire('Jawaban Salah', 'Coba Lagi!', 'error')">Jawa Barat</button>
+    <button class="pres-btn primary" onclick="Swal.fire('Jawaban Salah', 'Coba Lagi!', 'error')">DKI Jakarta</button>
+<button class="pres-btn primary" onclick="Swal.fire('Jawaban Salah', 'Coba Lagi!', 'error')">Sumatra Selatan</button>
+<button class="pres-btn primary" onclick="Swal.fire('Jawaban Benar', 'Selamat!', 'success')">Sumatra Barat</button>
+<button class="pres-btn primary" onclick="Swal.fire('Jawaban Salah', 'Coba Lagi!', 'error')">Nusa Tenggara Timur</button>
+  </div>
+
+
+      </div>
+    </div>
+
+
+
+<!-- PAGE 2: Presentation card -->
+    <div class="page" data-page="1" id="page-1">
+      <!-- Contoh elemen presentasi (tempelkan di <body>) -->
+      <div class="pres-card" role="article" aria-label="kartu presentasi contoh">
+        <h2 class="pres-title">Balairung Kelarasan Bodi Caniago</h2>
+
+        <div class="pres-body">
+         Balairung ini sering dimanfaatkan untuk kegiatan musyawarah. Dalam musyawarah para penghulu kelarasan Bodi Caniago, dikenal filosofi <strong>“duduak samo randah, tagak samo tinggi”.</strong> Tidak adanya anjung pada balairung ini berarti tidak ada tempat yang lebih tinggi, yang biasa diperuntukkan bagi raja ataupun penghulu pucuk. Sistem adat Bodi Caniago tidak mengenal adanya penghulu pucuk (ketua penghulu atau penghulu yang paling tua). </div>
+
+<div class="pres-embed"> <!-- --- Three.js GLB viewer: paste ke dalam <div class="pres-media"> pada page-1 --- -->
+<div id="threeContainer" style="width:60%; max-width:900px; height:360px; border-radius:10px; background:transparent;"></div></div>
+
+        
+
+
+              </div>
+    </div>
+
+
+
+    <!-- PAGE 2: Application card (game) -->
+    <div class="page hidden" data-page="2" id="page-2">
+      <div class="card" role="application" aria-label="game kartu peletakan tahta batu">
+
+        <div class="map-wrap">
+          <div id="map" class="map" aria-label="area peletakan (18m x 9m)">
+            <!-- compass -->
+            <div class="compass" aria-hidden="true">
+              <div class="cardinal N">U</div>
+              <div class="cardinal S">S</div>
+              <div class="cardinal E">T</div>
+              <div class="cardinal W">B</div>
+              <div class="cardinal NE">TL</div>
+              <div class="cardinal NW">BL</div>
+              <div class="cardinal SE">TG</div>
+              <div class="cardinal SW">BD</div>
+            </div>
+
+            <!-- answer overlay -->
+            <div id="answerOverlay" class="answer-overlay" style="display:none"></div>
+          </div>
+
+          <div class="scale-label">Denah: <strong>18 m</strong> (barat — timur) × <strong>9 m</strong> (selatan — utara). Batas talud bergaris di dalam bingkai.</div>
+
+          <div class="controls">
+            <button id="checkBtn" class="btn">Periksa</button>
+            <button id="replayBtn" class="btn alt">Atur Ulang</button>
+            <button id="showKey" class="btn">Tampilkan Kunci</button>
+          </div>
+        </div>
+
+        <div class="tools">
+ <h2 class="pres-title">Kurisi Salapan</h2>
+
+          <div class="palette">
+            <h3>Peti Batu</h3>
+            <div class="stone-item" draggable="true" data-type="row1">
+              <div class="stone-drag">B1</div>
+              <div class="stone-label">Tahta Batu Utara</div>
+            </div>
+            <div class="stone-item" draggable="true" data-type="row2">
+              <div class="stone-drag">B2</div>
+              <div class="stone-label">Tahta Batu Selatan</div>
+            </div>
+            <div class="stone-item" draggable="true" data-type="chair">
+              <div class="stone-drag">K</div>
+              <div class="stone-label">Batu Besar</div>
+            </div>
+            
+          </div>
+
+          <div class="clues">
+            <h3>Petunjuk singkat</h3>
+            <div class="clue">• Letakkan 2 tahta batu di utara dan 5 tahta batu di selatan, dengan jarak masing-masing sejauh ≈ 3 m, kecuali tahta batu utara.</div>
+            <div class="clue">• Semua di bidang 18 × 9 m (lihat batas talud pada denah).</div>
+            <div class="clue">• Batu besar berada di paling timur laut, dengan jarak 12 meter dengan tahta batu paling barat laut.</div>
+            
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+<!-- PAGE 2: Presentation card -->
+    <div class="page" data-page="1" id="page-1">
+      <!-- Contoh elemen presentasi (tempelkan di <body>) -->
+      <div class="pres-card" role="article" aria-label="kartu presentasi contoh">
+        <h2 class="pres-title">Medan nan Bapaneh</h2>
+
+        <div class="pres-body">
+         Medan nan bapaneh juga merupakan balai batu yang terdiri dari tatanan beberapa tahta batu yang disusun membentuk denah segi empat. Tahta batu tersebut berupa pasangan dari sebuah batu yang diletakkan mendatar di bagian depan serta sebuah batu lain yang ditegakkan di bagian belakangnya sehingga menyerupai alas dan sandaran kursi. </div>
+
+ <div class="pres-media">
+          <!-- Gambar ilustrasi (ganti src sesuai file/gambar Anda) -->
+          <img class="pres-image" style="width:60%" src="medan.jpeg" alt="Ilustrasi denah Kurisi Salapan">
+      </div>
+
+
+
+
+              </div>
+
+    </div>
+<!-- PAGE 2: Presentation card -->
+    <div class="page" data-page="1" id="page-1">
+      <!-- Contoh elemen presentasi (tempelkan di <body>) -->
+      <div class="pres-card" role="article" aria-label="kartu presentasi contoh">
+        <h2 class="pres-title">Nilai-Nilai Demokrasi Minangkabau</h2>
+
+        <div class="pres-body">
+         Pasangkan istilah berikut dengan maknanya yang tepat. </div>
+
+ <div class="pres-media">
+         <!-- MATCH GAME (HTML minimal) -->
+<div class="match-card" role="application" aria-label="game tarik garis">
+  
+  <div class="match-grid">
+    <!-- Kolom istilah (kiri) -->
+    <div class="terms" id="termsCol" aria-label="istilah">
+      <div class="term" data-key="a" tabindex="0">Saiyo sakato</div>
+      <div class="term" data-key="b" tabindex="0">Sahino samalu</div>
+      <div class="term" data-key="c" tabindex="0">Anggo tanggo</div>
+      <div class="term" data-key="d" tabindex="0">Sapikue Sajinjiang</div>
+    </div>
+
+    <!-- Layer SVG tengah (tempat garis) -->
+    <div class="svg-layer" id="svgLayer" aria-hidden="true">
+      <svg id="svgLines" class="match-lines" preserveAspectRatio="xMinYMin meet"></svg>
+    </div>
+
+    <!-- Kolom definisi (kanan) -->
+    <div class="defs" id="defsCol" aria-label="definisi">
+      <div class="def" data-key="b" tabindex="0">Kehidupan kelompok sesuku sangat erat...</div>
+      <div class="def" data-key="d" tabindex="0">Tugas menjadi tanggung jawab bersama...</div>
+      <div class="def" data-key="a" tabindex="0">Perbedaan pendapat diakui; diselesaikan lewat musyawarah...</div>
+      <div class="def" data-key="c" tabindex="0">Pergaulan tertib dan disiplin; anggota wajib mematuhi aturan...</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+    <button id="resetMatch" class="btn alt">Reset</button>
+    <button id="checkMatch" class="btn">Periksa</button>
+  </div>
+</div>
+
+      </div>
+
+
+              </div>
+    </div>
+
+  </div>
+
+
+  </div>
+
+
+
+
+  <!-- pager controls -->
+  <div class="pager" role="navigation" aria-label="navigasi halaman">
+    <button id="prevPage" class="ghost">Previous</button>
+    <div class="page-indicator" id="pageIndicator">1 / 2</div>
+    <button id="nextPage">Next</button>
+  </div>
+
+  <!-- existing script (unchanged) -->
+  <script>
+  // Scale: 1 meter = 30 pixels
+  const meter = 30;
+  const mapEl = document.getElementById('map');
+  const mapW = 18 * meter;
+  const mapH = 9 * meter;
+  const placed = [];
+
+  // set map size (in case responsive)
+  mapEl.style.width = mapW + 'px';
+  mapEl.style.height = mapH + 'px';
+
+  // --- Palette dragstart ---
+  document.querySelectorAll('.stone-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', item.dataset.type);
+      const img = new Image();
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+      e.dataTransfer.setDragImage(img, 0, 0);
+    });
+  });
+
+  // Map accept drops
+  mapEl.addEventListener('dragover', e => { e.preventDefault(); });
+  mapEl.addEventListener('drop', e => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('text/plain');
+    if (!type) return;
+    const rect = mapEl.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
+    // keep inside map
+    x = Math.max(0, Math.min(mapW, x));
+    y = Math.max(0, Math.min(mapH, y));
+    // snap to 0.5 m
+    x = Math.round((x / meter) * 2) / 2 * meter;
+    y = Math.round((y / meter) * 2) / 2 * meter;
+    addStone(type, x, y);
+  });
+
+  function addStone(type, px, py){
+    const limits = {row1:2,row2:5,chair:1};
+    const count = placed.filter(s=>s.type===type).length;
+    if(count >= limits[type]){
+      flashMsg('Jumlah maksimum tipe ini telah ditempatkan.');
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'stone ' + (type==='chair'? 'chair': (type==='row1'?'row1':'row2'));
+    el.setAttribute('data-type', type);
+    el.style.left = px + 'px';
+    el.style.top = py + 'px';
+    el.draggable = false;
+    el.title = 'Klik & seret untuk memindahkan';
+
+    // label
+    if(type==='chair') el.textContent = 'K'; else if(type==='row1') el.textContent = '1'; else el.textContent = '2';
+
+    mapEl.appendChild(el);
+    const obj = {el,type,px,py};
+    placed.push(obj);
+
+    // pointer drag (mouse & touch)
+    el.addEventListener('pointerdown', ev => {
+      ev.preventDefault();
+      el.setPointerCapture(ev.pointerId);
+      const rect = mapEl.getBoundingClientRect();
+
+      function onMove(eMove){
+        let x = eMove.clientX - rect.left;
+        let y = eMove.clientY - rect.top;
+        x = Math.max(0, Math.min(mapW, x));
+        y = Math.max(0, Math.min(mapH, y));
+        x = Math.round((x / meter) * 2) / 2 * meter;
+        y = Math.round((y / meter) * 2) / 2 * meter;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+      }
+
+      function onUp(eUp){
+        try { el.releasePointerCapture(ev.pointerId); } catch(e){ }
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        const p = placed.find(pp=>pp.el===el);
+        if(p){ p.px = parseFloat(el.style.left); p.py = parseFloat(el.style.top); }
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+
+    // remove on double click
+    el.addEventListener('dblclick', ()=>{
+      if(el.parentNode) el.parentNode.removeChild(el);
+      const idx = placed.findIndex(p=>p.el===el); if(idx>-1) placed.splice(idx,1);
+    });
+
+    // keyboard nudges
+    el.tabIndex = 0;
+    el.addEventListener('keydown', (e)=>{
+      const step = meter * 0.5;
+      let moved = false;
+      let x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+      if(e.key === 'ArrowLeft'){ x = Math.max(0, x - step); moved = true; }
+      if(e.key === 'ArrowRight'){ x = Math.min(mapW, x + step); moved = true; }
+      if(e.key === 'ArrowUp'){ y = Math.max(0, y - step); moved = true; }
+      if(e.key === 'ArrowDown'){ y = Math.min(mapH, y + step); moved = true; }
+      if(moved){
+        x = Math.round((x / meter) * 2) / 2 * meter;
+        y = Math.round((y / meter) * 2) / 2 * meter;
+        el.style.left = x + 'px'; el.style.top = y + 'px';
+        const p = placed.find(pp=>pp.el===el); if(p){p.px=x;p.py=y}
+        e.preventDefault();
+      }
+    });
+  }
+
+  function flashMsg(txt){
+    const note = document.createElement('div');
+    note.textContent = txt;
+    note.style.position='fixed';
+    note.style.left='50%';
+    note.style.top='14px';
+    note.style.transform='translateX(-50%)';
+    note.style.background='#fff';
+    note.style.border='2px solid rgba(116,77,38,0.08)';
+    note.style.padding='10px 16px';
+    note.style.borderRadius='10px';
+    note.style.boxShadow='0 8px 22px rgba(0,0,0,0.14)';
+    document.body.appendChild(note);
+    setTimeout(()=>note.remove(),1600);
+  }
+
+  // Solution coordinates (meters)
+  const solution = [
+    {type:'row1',mx:3,my:2,label:'B1'},
+    {type:'row1',mx:15,my:2,label:'B1'},
+    {type:'row2',mx:3,my:5,label:'B2'},
+    {type:'row2',mx:6.5,my:5,label:'B2'},
+    {type:'row2',mx:9.5,my:5,label:'B2'},
+    {type:'row2',mx:12.5,my:5,label:'B2'},
+    {type:'row2',mx:15,my:5,label:'B2'},
+    {type:'chair',mx:16.5,my:0.5,label:'K'}
+  ];
+
+  // checkPlacement: lebih longgar / tidak sensitif
+  function checkPlacement(){
+    const counts = {row1:0,row2:0,chair:0};
+    placed.forEach(p=>counts[p.type]++);
+    if(counts.row1 !== 2 || counts.row2 !==5 || counts.chair !==1){
+      flashMsg('Butuh: 2 (baratlaut), 5 (tenggara), 1 (batu besar). Sekarang: ' + counts.row1 + '/' + counts.row2 + '/' + counts.chair);
+      return;
+    }
+
+    // toleransi lebih longgar
+    const tol = 1.5; // meter tolerance for small stones
+    const chairTol = 2.0; // for the big stone
+    const used = new Array(placed.length).fill(false);
+    let okPairs = 0;
+    for(const sol of solution){
+      if(sol.type === 'chair'){
+        const idx = placed.findIndex(p=>p.type==='chair');
+        if(idx===-1) continue;
+        const p = placed[idx];
+        const dx = Math.abs((p.px/meter) - sol.mx);
+        const dy = Math.abs((p.py/meter) - sol.my);
+        if(Math.hypot(dx,dy) <= chairTol) okPairs++;
+        continue;
+      }
+      let nearest = -1; let nd = 1e9;
+      for(let i=0;i<placed.length;i++){
+        if(used[i]) continue;
+        if(placed[i].type !== sol.type) continue;
+        const dx = Math.abs((placed[i].px/meter) - sol.mx);
+        const dy = Math.abs((placed[i].py/meter) - sol.my);
+        const d = Math.hypot(dx,dy);
+        if(d < nd){ nd = d; nearest = i; }
+      }
+      if(nearest > -1 && nd <= tol){ okPairs++; used[nearest] = true; }
+    }
+
+    // show feedback with counts, require >= 6 of 8 to be considered good
+    const msg = `${okPairs} dari ${solution.length} titik cocok.`;
+    if(okPairs >= 6){
+      flashMsg('Bagus — ' + msg + ' (cukup dekat).');
+      showAnswerMarkers(true);
+    } else {
+      flashMsg('Belum pas — ' + msg + ' Coba geser sedikit agar pas pada garis/batas.');
+    }
+  }
+
+  document.getElementById('checkBtn').addEventListener('click', checkPlacement);
+  document.getElementById('replayBtn').addEventListener('click', ()=>{
+    placed.slice().forEach(p=>{ if(p.el.parentNode) p.el.parentNode.removeChild(p.el); });
+    placed.length = 0;
+    document.getElementById('answerOverlay').style.display='none';
+  });
+
+  // show answer overlay
+  function showAnswerMarkers(show){
+    const ov = document.getElementById('answerOverlay');
+    ov.innerHTML = '';
+    if(!show){ ov.style.display='none'; return; }
+    ov.style.display='block';
+    solution.forEach((s)=>{
+      const pin = document.createElement('div');
+      pin.className='hint-pin';
+      pin.textContent = s.label === 'K' ? 'K' : (s.type==='row1'?'1':'2');
+      const left = s.mx * meter; const top = s.my * meter;
+      pin.style.left = left + 'px'; pin.style.top = top + 'px';
+      pin.style.position='absolute';
+      ov.appendChild(pin);
+    });
+    const explain = document.createElement('div');
+    explain.className='answer-note';
+    explain.innerHTML = '<strong>Kunci (ringkas):</strong> Baratlaut: x≈3m & 15m, y≈2m. Tenggara: x≈3,6.5,9.5,12.5,15 m, y≈5m. Batu besar dekat sudut timurlaut (~16.5m,0.5m).';
+    ov.appendChild(explain);
+  }
+
+  document.getElementById('showKey').addEventListener('click', ()=>{
+    const ov = document.getElementById('answerOverlay');
+    if(ov.style.display==='block') showAnswerMarkers(false); else showAnswerMarkers(true);
+  });
+
+  // meter ticks for reference (non-intrusive)
+  for(let mx=1; mx<=17; mx++){
+    const mark = document.createElement('div');
+    mark.style.position='absolute'; mark.style.left=(mx*meter)+'px'; mark.style.top='-8px'; mark.style.fontSize='11px'; mark.style.color='#6a6a4f';
+    mark.textContent=mx+'m';
+    mapEl.appendChild(mark);
+  }
+  for(let my=1; my<=8; my++){
+    const mark = document.createElement('div');
+    mark.style.position='absolute'; mark.style.top=(my*meter)+'px'; mark.style.left='-28px'; mark.style.fontSize='11px'; mark.style.color='#6a6a4f';
+    mark.textContent=my+'m';
+    mapEl.appendChild(mark);
+  }
+
+  // small help
+  mapEl.addEventListener('keydown', (e)=>{ if(e.key==='?'||e.key==='h') flashMsg('Drag item dari kiri lalu lepas di denah. Double-click batu untuk hapus.'); });
+  </script>
+
+  <!-- NEW: Page navigation script (keeps rest intact) -->
+  <script>
+    (function(){
+      const pages = Array.from(document.querySelectorAll('.page'));
+      const total = pages.length;
+      let current = 0;
+
+      const prevBtn = document.getElementById('prevPage');
+      const nextBtn = document.getElementById('nextPage');
+      const indicator = document.getElementById('pageIndicator');
+
+      function showPage(index){
+        if(index < 0) index = 0;
+        if(index >= total) index = total - 1;
+        current = index;
+        pages.forEach((p,i)=> {
+          if(i === index) p.classList.remove('hidden'); else p.classList.add('hidden');
+        });
+        indicator.textContent = (index+1) + ' / ' + total;
+
+        // when showing the page with the map, give focus to map for keyboard nudges
+        const mapPageIndex = pages.findIndex(p => !!p.querySelector('#map'));
+        if(index === mapPageIndex){
+          // small timeout to ensure layout settled
+          setTimeout(()=>{ const m = document.getElementById('map'); if(m) m.focus && m.focus(); }, 50);
+        }
+      }
+
+      prevBtn.addEventListener('click', ()=> showPage(current - 1));
+      nextBtn.addEventListener('click', ()=> showPage(current + 1));
+
+      // keyboard navigation: left/right arrows
+      window.addEventListener('keydown', (e)=>{
+        if(e.key === 'ArrowLeft') showPage(current - 1);
+        if(e.key === 'ArrowRight') showPage(current + 1);
+      });
+
+      // initialize
+      showPage(0);
+
+      // if user resizes small screens, ensure pages height updated (not strictly necessary)
+      window.addEventListener('resize', ()=> {
+        pages.forEach(p => p.style.height = window.innerHeight + 'px');
+      });
+    })();
+  </script>
+  
+
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+  import { GLTFLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
+
+  const container = document.getElementById('threeContainer');
+
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+
+  // Scene & camera
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0, 1.2, 3.5);
+
+  // Lights
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(5, 10, 7);
+  scene.add(dir);
+
+  // Controls (users can orbit/touch)
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.enablePan = false;
+  controls.autoRotate = false; // we'll rotate the model itself
+
+  // Loader
+  const loader = new GLTFLoader();
+  let model = null;
+
+  loader.load(
+    'kelarasan.glb',
+    (gltf) => {
+      model = gltf.scene;
+      // compute bounding box and auto-scale to fit nicely
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = (maxDim > 0) ? (2.0 / maxDim) : 1;
+      model.scale.setScalar(scale);
+      // re-center
+      box.setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+      // slight rotation so model faces camera better
+      model.rotation.x = -0.05;
+      scene.add(model);
+    },
+    (xhr) => {
+      // optional: progress (kept silent)
+    },
+    (err) => {
+      console.error('Gagal memuat kelarasan.glb', err);
+      // tampilkan pesan kecil di container
+      const p = document.createElement('div');
+      p.style.fontSize = '13px';
+      p.style.color = '#6b6b4f';
+      p.style.padding = '8px';
+      p.textContent = 'Gagal memuat model (cek path kelarasan.glb).';
+      container.appendChild(p);
+    }
+  );
+
+  // Auto-rotate speed (radians per frame)
+  const ROT_SPEED = 0.01;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (model) {
+      model.rotation.y += ROT_SPEED;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // handle resize of container (responsive)
+  const ro = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  });
+  ro.observe(container);
+
+  // Optional: pause render when hidden to save CPU (detect parent page visibility)
+  const pageEl = container.closest('.page');
+  if (pageEl) {
+    const obs = new MutationObserver(() => {
+      const hidden = pageEl.classList.contains('hidden') || getComputedStyle(pageEl).display === 'none';
+      if (hidden) {
+        // stop animation loop by replacing animate with noop (easy approach: set renderer.setAnimationLoop null)
+        renderer.setAnimationLoop(null);
+      } else {
+        // resume
+        renderer.setAnimationLoop(() => {
+          if (model) model.rotation.y += ROT_SPEED;
+          controls.update();
+          renderer.render(scene, camera);
+        });
+      }
+    });
+    obs.observe(pageEl, { attributes: true, attributeFilter: ['class', 'style'] });
+    // init observer once immediately
+    obs.takeRecords();
+  }
+</script>
+<script>
+// JavaScript lengkap untuk game Tarik Garis / Matching
+(function () {
+  // --- CONFIG: istilah & definisi (kunci harus sama untuk pasangan benar) ---
+  const ITEMS = [
+    { key: 'a', label: 'Saiyo sakato' },
+    { key: 'b', label: 'Sahino samalu' },
+    { key: 'c', label: 'Anggo tanggo' },
+    { key: 'd', label: 'Sapikue Sajinjiang' }
+  ];
+  const DEFS = [
+    { key: 'a', text: 'Perbedaan pendapat diakui; diselesaikan lewat musyawarah hingga mufakat; keputusan harus dilaksanakan oleh semua pihak.' },
+    { key: 'b', text: 'Kehidupan kelompok sesuku sangat erat; harga diri individu melebur menjadi harga diri kelompok.' },
+    { key: 'c', text: 'Pergaulan tertib dan disiplin; anggota wajib mematuhi aturan dan pedoman penguasa adat.' },
+    { key: 'd', text: 'Tugas menjadi tanggung jawab bersama; sifat gotong-royong, saling membantu, dan mendukung merupakan kewajiban.' }
+  ];
+
+  // --- DOM refs ---
+  const termsCol = document.getElementById('termsCol');
+  const defsCol  = document.getElementById('defsCol');
+  const svgLayer  = document.getElementById('svgLayer');
+  const svg       = document.getElementById('svgLines');
+  const btnReset  = document.getElementById('resetMatch');
+  const btnCheck  = document.getElementById('checkMatch');
+
+  if(!termsCol || !defsCol || !svgLayer || !svg || !btnReset || !btnCheck){
+    console.warn('Matching game: missing DOM elements (termsCol/defsCol/svgLayer/svgLines/resetMatch/checkMatch).');
+    return;
+  }
+
+  // --- state ---
+  let shuffledDefs = [];
+  const connections = {}; // termKey -> defKey
+  let selectedTermEl = null; // for click-select mode
+  let dragState = null; // {termKey, termEl, pointerId, tempPath, startPos}
+
+  // helpers
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+  function flash(msg, type='info'){
+    if(window.Swal) {
+      if(type === 'error') Swal.fire('Perhatian', msg, 'error');
+      else if(type === 'success') Swal.fire('Sukses', msg, 'success');
+      else if(type === 'warning') Swal.fire('Perhatian', msg, 'warning');
+      else Swal.fire(msg);
+    } else {
+      // fallback lightweight toast
+      const el = document.createElement('div');
+      el.textContent = msg;
+      Object.assign(el.style, { position:'fixed', left:'50%', transform:'translateX(-50%)', bottom:'110px', background:'#fff', padding:'8px 12px', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px', boxShadow:'0 10px 30px rgba(0,0,0,0.12)', zIndex:9999 });
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(), 1500);
+    }
+  }
+
+  // --- RENDER ---
+  function render(){
+    // render left column (terms)
+    termsCol.innerHTML = '';
+    ITEMS.forEach(it=>{
+      const d = document.createElement('div');
+      d.className = 'term';
+      d.tabIndex = 0;
+      d.dataset.key = it.key;
+      d.textContent = it.label;
+      termsCol.appendChild(d);
+    });
+
+    // shuffle defs each render
+    shuffledDefs = shuffle(DEFS);
+    defsCol.innerHTML = '';
+    shuffledDefs.forEach(dObj=>{
+      const d = document.createElement('div');
+      d.className = 'def';
+      d.tabIndex = 0;
+      d.dataset.key = dObj.key;
+      d.textContent = dObj.text;
+      defsCol.appendChild(d);
+    });
+
+    attachHandlers();
+    updateMarkers();
+    scheduleRedraw(0);
+  }
+
+  // --- EVENT HANDLERS ---
+  function attachHandlers(){
+    // Terms
+    termsCol.querySelectorAll('.term').forEach(el=>{
+      el.onmousedown = el.ontouchstart = null;
+      el.onclick = termClickHandler;
+      el.onkeydown = (e)=>{ if(e.key === 'Enter') termClickHandler.call(el, e); };
+      // pointerdown for drag drawing
+      el.addEventListener('pointerdown', onTermPointerDown);
+    });
+
+    // Defs
+    defsCol.querySelectorAll('.def').forEach(el=>{
+      el.onclick = defClickHandler;
+      el.onkeydown = (e)=>{ if(e.key === 'Enter') defClickHandler.call(el, e); };
+    });
+  }
+
+  function termClickHandler(e){
+    const el = this || e.currentTarget;
+    const key = el.dataset.key;
+    // toggle selection
+    if(selectedTermEl && selectedTermEl === el){
+      selectedTermEl.classList.remove('selected'); selectedTermEl = null;
+      return;
+    }
+    if(selectedTermEl) selectedTermEl.classList.remove('selected');
+    selectedTermEl = el;
+    selectedTermEl.classList.add('selected');
+  }
+
+  function defClickHandler(e){
+    const defEl = this || e.currentTarget;
+    const defKey = defEl.dataset.key;
+    if(!selectedTermEl){
+      flash('Pilih istilah terlebih dahulu.', 'warning');
+      return;
+    }
+    const termKey = selectedTermEl.dataset.key;
+    // remove any existing connection to this def
+    for(const tk in connections){ if(connections[tk] === defKey) delete connections[tk]; }
+    connections[termKey] = defKey;
+    selectedTermEl.classList.remove('selected'); selectedTermEl = null;
+    updateMarkers();
+    scheduleRedraw();
+  }
+
+  // --- drag-draw handlers (pointer) ---
+  function onTermPointerDown(e){
+    // start drawing temporary line
+    // ignore if right-click or ctrl/meta
+    if(e.button !== 0) return;
+    const termEl = this;
+    termEl.setPointerCapture(e.pointerId);
+    const termKey = termEl.dataset.key;
+    const layerRect = svgLayer.getBoundingClientRect();
+    const tRect = termEl.getBoundingClientRect();
+    const startX = tRect.right - layerRect.left;
+    const startY = (tRect.top + tRect.bottom)/2 - layerRect.top;
+
+    // create temporary path
+    const NS = 'http://www.w3.org/2000/svg';
+    const tempPath = document.createElementNS(NS, 'path');
+    tempPath.setAttribute('stroke', '#c04b3a');
+    tempPath.setAttribute('stroke-width', Math.max(3, Math.round(window.devicePixelRatio * 2.5)));
+    tempPath.setAttribute('fill', 'none');
+    tempPath.setAttribute('stroke-linecap', 'round');
+    tempPath.setAttribute('stroke-linejoin', 'round');
+    tempPath.style.pointerEvents = 'none';
+    svg.appendChild(tempPath);
+
+    dragState = {
+      termKey, termEl, pointerId: e.pointerId, tempPath, startPos: { x: startX, y: startY }
+    };
+
+    function onMove(ev){
+      if(!dragState) return;
+      const rect = svgLayer.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      // cubic bezier from start to current with small control
+      const dx = Math.abs(x - dragState.startPos.x);
+      const cp = Math.min(160, Math.max(40, dx * 0.35));
+      const dAttr = `M ${dragState.startPos.x} ${dragState.startPos.y} C ${dragState.startPos.x + cp} ${dragState.startPos.y} ${x - cp} ${y} ${x} ${y}`;
+      dragState.tempPath.setAttribute('d', dAttr);
+    }
+
+    function onUp(ev){
+      try { termEl.releasePointerCapture(e.pointerId); } catch(err){}
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      if(!dragState) return;
+      // detect def under pointer
+      const elUnder = document.elementFromPoint(ev.clientX, ev.clientY);
+      const defEl = elUnder && elUnder.closest && elUnder.closest('.def');
+      if(defEl){
+        const defKey = defEl.dataset.key;
+        // disconnect any term that had this def
+        for(const tk in connections) if(connections[tk] === defKey) delete connections[tk];
+        connections[dragState.termKey] = defKey;
+        updateMarkers();
+        scheduleRedraw();
+      }
+      // remove temp path
+      if(dragState.tempPath && dragState.tempPath.parentNode) dragState.tempPath.parentNode.removeChild(dragState.tempPath);
+      dragState = null;
+    }
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }
+
+  // --- draw lines (svg) ---
+  const NS = 'http://www.w3.org/2000/svg';
+  function drawLines(){
+    // clear previous lines but keep potential temp path? we remove all path then redraw connections
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const layerRect = svgLayer.getBoundingClientRect();
+    const layerW = svgLayer.clientWidth;
+    const layerH = svgLayer.clientHeight;
+    svg.setAttribute('viewBox', `0 0 ${layerW} ${layerH}`);
+    svg.setAttribute('width', layerW);
+    svg.setAttribute('height', layerH);
+
+    for(const tKey in connections){
+      const dKey = connections[tKey];
+      const termEl = termsCol.querySelector(`.term[data-key='${tKey}']`);
+      const defEl  = defsCol.querySelector(`.def[data-key='${dKey}']`);
+      if(!termEl || !defEl) continue;
+      const tRect = termEl.getBoundingClientRect();
+      const dRect = defEl.getBoundingClientRect();
+      const x1 = tRect.right - layerRect.left;
+      const y1 = (tRect.top + tRect.bottom)/2 - layerRect.top;
+      const x2 = dRect.left - layerRect.left;
+      const y2 = (dRect.top + dRect.bottom)/2 - layerRect.top;
+
+      const dx = Math.abs(x2 - x1);
+      const cp = Math.min(160, Math.max(40, dx * 0.35));
+      const cp1x = x1 + cp;
+      const cp1y = y1;
+      const cp2x = x2 - cp;
+      const cp2y = y2;
+
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', `M ${x1} ${y1} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${x2} ${y2}`);
+      path.setAttribute('stroke', '#c04b3a');
+      path.setAttribute('stroke-width', Math.max(3, Math.round(window.devicePixelRatio * 2.5)));
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      path.style.pointerEvents = 'none';
+      svg.appendChild(path);
+    }
+  }
+
+  // --- markers update (visual classes) ---
+  function updateMarkers(){
+    // clear selected highlights
+    termsCol.querySelectorAll('.term').forEach(t=>t.classList.remove('selected'));
+    defsCol.querySelectorAll('.def').forEach(d=>d.classList.remove('connected'));
+    // apply connected classes
+    for(const tk in connections){
+      const dk = connections[tk];
+      const defEl = defsCol.querySelector(`.def[data-key='${dk}']`);
+      if(defEl) defEl.classList.add('connected');
+    }
+  }
+
+  // --- resize/observer utilities ---
+  let redrawTid = null;
+  function scheduleRedraw(ms = 50){
+    if(redrawTid) clearTimeout(redrawTid);
+    redrawTid = setTimeout(()=>{ redrawTid = null; drawLines(); }, ms);
+  }
+  window.addEventListener('resize', ()=> scheduleRedraw(80));
+  window.addEventListener('orientationchange', ()=> scheduleRedraw(80));
+  window.addEventListener('scroll', ()=> scheduleRedraw(80), true);
+
+  const ro = new ResizeObserver(()=> scheduleRedraw(30));
+  ro.observe(svgLayer);
+  ro.observe(termsCol);
+  ro.observe(defsCol);
+
+  const mo = new MutationObserver(()=> scheduleRedraw(30));
+  mo.observe(termsCol, { childList:true, subtree:true, attributes:true });
+  mo.observe(defsCol,  { childList:true, subtree:true, attributes:true });
+
+  // --- buttons ---
+  btnReset.addEventListener('click', ()=>{
+    for(const k in connections) delete connections[k];
+    selectedTermEl = null;
+    dragState = null;
+    shuffledDefs = shuffle(DEFS);
+    render();
+  });
+
+  btnCheck.addEventListener('click', ()=>{
+    const total = ITEMS.length;
+    const connectedCount = Object.keys(connections).length;
+    if(connectedCount !== total){
+      flash(`Hubungkan semua istilah terlebih dahulu (${connectedCount}/${total}).`, 'warning');
+      return;
+    }
+    let ok = 0;
+    ITEMS.forEach(it => { if(connections[it.key] === it.key) ok++; });
+    if(ok === total){
+      flash('Semua pasangan benar — bagus!', 'success');
+    } else {
+      flash(`Betul ${ok} dari ${total}. Periksa kembali.`, 'error');
+    }
+  });
+
+  // --- init ---
+  render();
+  scheduleRedraw(0);
+
+})();
+
+</script>
+ 
+
+
+<footer class="site-footer" role="contentinfo" aria-label="footer penulis">
+  <div class="site-footer__inner">
+    © <span id="footerYear"></span> Abimanyu Laksana Wicaksono
+  </div>
+</footer>
+
+</body>
+</html>
