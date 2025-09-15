@@ -314,7 +314,12 @@ svg.match-lines path{ stroke-linecap:round; stroke-linejoin:round; opacity:0.98;
 
 /* jangan biarkan footer menutup konten penting saat halaman penuh */
 .pages { padding-bottom: calc(var(--footer-h) + 18px); }
-
+model-viewer {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    max-height: 100%;
+                     }
 
   </style>
 </head>
@@ -360,7 +365,14 @@ svg.match-lines path{ stroke-linecap:round; stroke-linejoin:round; opacity:0.98;
          Balairung ini sering dimanfaatkan untuk kegiatan musyawarah. Dalam musyawarah para penghulu kelarasan Bodi Caniago, dikenal filosofi <strong>“duduak samo randah, tagak samo tinggi”.</strong> Tidak adanya anjung pada balairung ini berarti tidak ada tempat yang lebih tinggi, yang biasa diperuntukkan bagi raja ataupun penghulu pucuk. Sistem adat Bodi Caniago tidak mengenal adanya penghulu pucuk (ketua penghulu atau penghulu yang paling tua). </div>
 
 <div class="pres-embed"> <!-- --- Three.js GLB viewer: paste ke dalam <div class="pres-media"> pada page-1 --- -->
-<div id="threeContainer" style="width:60%; max-width:900px; height:360px; border-radius:10px; background:transparent;"></div></div>
+<model-viewer 
+  id="brainViewer"
+  src="kelarasan.glb" 
+  alt="Brain 3D Model" 
+  auto-rotate 
+  camera-controls
+  exposure="1.0">
+</model-viewer></div>
 
         
 
@@ -1230,6 +1242,28 @@ svg.match-lines path{ stroke-linecap:round; stroke-linejoin:round; opacity:0.98;
 })();
 
 </script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+<script>
+  const viewer = document.querySelector('#brainViewer');
+
+  viewer.addEventListener('load', () => {
+    if (!viewer.model) {
+      console.error("Model failed to load.");
+      return;
+    }
+
+    // Loop through all materials and recolor
+    viewer.model.materials.forEach(mat => {
+      // Remove textures so the base color shows
+      mat.pbrMetallicRoughness.baseColorTexture = null;
+      // Set to #C9A96B (RGBA in 0–1 range)
+      mat.pbrMetallicRoughness.setBaseColorFactor([0.788, 0.663, 0.420, 1]);
+    });
+
+    console.log("Model recolored to #C9A96B");
+  });
+</script>
  
 
 
@@ -1241,3 +1275,4 @@ svg.match-lines path{ stroke-linecap:round; stroke-linejoin:round; opacity:0.98;
 
 </body>
 </html>
+
